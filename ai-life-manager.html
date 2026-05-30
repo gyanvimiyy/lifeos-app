@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LifeOS — AI Life Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --bg2: #13131a;
+    --bg3: #1a1a24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #7c5cfc;
+    --accent2: #a78bfa;
+    --gold: #f59e0b;
+    --teal: #14b8a6;
+    --coral: #f87171;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #555568;
+    --card: #16161f;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE OVERLAY */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none;
+    z-index:1000;
+    opacity:0.4;
+  }
+
+  /* LAYOUT */
+  .app { display:flex; height:100vh; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-text {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .logo-text span { color: var(--accent2); }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .nav { padding: 16px 12px; flex:1; }
+  .nav-section-label {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0 12px;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text2);
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active {
+    background: rgba(124,92,252,0.15);
+    color: var(--accent2);
+    font-weight: 500;
+  }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-bottom {
+    padding: 16px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg3);
+  }
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 13px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .user-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .user-plan { font-size: 11px; color: var(--text3); }
+
+  /* MAIN CONTENT */
+  .main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+  .main::-webkit-scrollbar { width: 4px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  /* HEADER */
+  .topbar {
+    padding: 24px 32px 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .page-title {
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+  }
+  .page-sub { font-size: 14px; color: var(--text2); margin-top: 4px; }
+  .date-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* CONTENT AREA */
+  .content { padding: 24px 32px 40px; flex:1; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+  .tab {
+    padding: 7px 18px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+  .tab.active { background: var(--accent); color: white; }
+  .tab:hover:not(.active) { color: var(--text); background: var(--bg3); }
+
+  /* SECTION */
+  .section { display:none; }
+  .section.visible { display:block; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px; }
+
+  /* CARD */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .card-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* STAT CARDS */
+  .stat-val {
+    font-family: var(--font-head);
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+  .stat-val.accent { color: var(--accent2); }
+  .stat-val.gold { color: var(--gold); }
+  .stat-val.teal { color: var(--teal); }
+  .stat-val.coral { color: var(--coral); }
+  .stat-label { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  .stat-change {
+    font-size: 11px;
+    color: var(--teal);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-change.down { color: var(--coral); }
+
+  /* HABIT TRACKER */
+  .habit-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .habit-row:last-child { border-bottom: none; }
+  .habit-name { font-size: 14px; color: var(--text); font-weight: 400; }
+  .habit-streak {
+    font-size: 12px;
+    color: var(--gold);
+    font-family: var(--font-head);
+    font-weight: 600;
+  }
+  .dots {
+    display: flex;
+    gap: 4px;
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .dot.done { background: var(--teal); border-color: var(--teal); }
+  .dot.today { border-color: var(--accent2); }
+
+  /* GOALS */
+  .goal-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .goal-item:last-child { border-bottom: none; }
+  .goal-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .goal-name { font-size: 14px; color: var(--text); font-weight: 500; }
+  .goal-pct {
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+  .progress-bar {
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--teal));
+    transition: width 0.6s ease;
+  }
+  .goal-dead { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+  /* TASKS */
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .task-item:last-child { border-bottom: none; }
+  .task-check {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border2);
+    flex-shrink: 0;
+    margin-top: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    color: transparent;
+  }
+  .task-item.done .task-check {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: white;
+  }
+  .task-item.done .task-text { text-decoration: line-through; color: var(--text3); }
+  .task-text { font-size: 14px; color: var(--text); line-height: 1.4; }
+  .task-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 500;
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag-work { background: rgba(124,92,252,0.15); color: var(--accent2); }
+  .tag-health { background: rgba(20,184,166,0.15); color: var(--teal); }
+  .tag-learn { background: rgba(245,158,11,0.12); color: var(--gold); }
+  .tag-money { background: rgba(248,113,113,0.12); color: var(--coral); }
+
+  /* ADD INPUT */
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .add-input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: var(--font-body);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .add-input:focus { border-color: var(--accent); }
+  .add-input::placeholder { color: var(--text3); }
+  .btn {
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    font-family: var(--font-body);
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #6b4eef; }
+  .btn-ghost {
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg2); color: var(--text); }
+
+  /* AI CHAT */
+  .ai-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    height: 480px;
+  }
+  .ai-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ai-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100%{opacity:1; transform:scale(1)}
+    50%{opacity:0.6; transform:scale(0.85)}
+  }
+  .ai-title { font-family: var(--font-head); font-size: 14px; font-weight: 600; }
+  .ai-sub { font-size: 11px; color: var(--text3); margin-left: auto; }
+  .messages {
+    flex:1;
+    overflow-y:auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .messages::-webkit-scrollbar { width: 3px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    animation: msgIn 0.2s ease;
+  }
+  @keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .msg.ai {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px 12px 12px 12px;
+    align-self: flex-start;
+  }
+  .msg.user {
+    background: rgba(124,92,252,0.2);
+    border: 1px solid rgba(124,92,252,0.3);
+    color: var(--text);
+    border-radius: 12px 4px 12px 12px;
+    align-self: flex-end;
+  }
+  .msg-name { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .msg.ai .msg-name { color: var(--accent2); }
+  .msg.user .msg-name { color: var(--text3); text-align: right; }
+  .typing { display: flex; gap: 4px; align-items: center; padding: 2px 0; }
+  .typing span {
+    width: 5px; height: 5px;
+    background: var(--text3);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+  .ai-input-row {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+  .quick-prompts {
+    padding: 0 16px 12px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .quick-btn {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .quick-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* FINANCE */
+  .spend-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    gap: 2px;
+    margin: 16px 0 12px;
+  }
+  .spend-seg { border-radius: 2px; transition: flex 0.4s ease; }
+  .legend-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* INSIGHTS FEED */
+  .insight-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .insight-item:last-child { border-bottom: none; }
+  .insight-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .insight-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .insight-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .insight-time { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-purple { background: rgba(124,92,252,0.15); color: var(--accent2); }
+  .badge-teal { background: rgba(20,184,166,0.12); color: var(--teal); }
+  .badge-gold { background: rgba(245,158,11,0.12); color: var(--gold); }
+
+  /* SELECT */
+  select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    font-size: 12px;
+    padding: 5px 10px;
+    font-family: var(--font-body);
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* GLOW ACCENT for dashboard */
+  .glow-card {
+    background: linear-gradient(135deg, rgba(124,92,252,0.08), rgba(20,184,166,0.05));
+    border: 1px solid rgba(124,92,252,0.2);
+  }
+
+  /* MONTH-WEEK MINI CALENDAR */
+  .week-strip { display: flex; gap: 6px; margin-bottom: 20px; }
+  .day-chip {
+    flex:1;
+    padding: 8px 4px;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    transition: all 0.15s;
+  }
+  .day-chip.today {
+    background: rgba(124,92,252,0.15);
+    border-color: rgba(124,92,252,0.4);
+  }
+  .day-chip:hover { border-color: var(--border2); }
+  .day-chip .d-name { font-size: 10px; color: var(--text3); text-transform: uppercase; }
+  .day-chip .d-num { font-family: var(--font-head); font-size: 16px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .day-chip .d-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent2); margin: 4px auto 0; }
+  .day-chip .d-dot.empty { background: transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">Life<span>OS</span></div>
+      <div class="logo-sub">AI Life Manager</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section-label">Overview</div>
+      <button class="nav-item active" onclick="switchTab('dashboard')">
+        <span class="nav-icon">⬡</span> Dashboard
+      </button>
+      <button class="nav-item" onclick="switchTab('ai')">
+        <span class="nav-icon">◈</span> AI Coach
+      </button>
+      <div class="nav-section-label">Modules</div>
+      <button class="nav-item" onclick="switchTab('habits')">
+        <span class="nav-icon">◎</span> Habits
+      </button>
+      <button class="nav-item" onclick="switchTab('goals')">
+        <span class="nav-icon">◉</span> Goals
+      </button>
+      <button class="nav-item" onclick="switchTab('tasks')">
+        <span class="nav-icon">▣</span> Tasks
+      </button>
+      <button class="nav-item" onclick="switchTab('finance')">
+        <span class="nav-icon">◆</span> Finance
+      </button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="avatar">G</div>
+        <div>
+          <div class="user-name">Gyanvi</div>
+          <div class="user-plan">Free plan</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">Good morning, Gyanvi 👋</div>
+        <div class="page-sub" id="page-sub">Here's your life snapshot for today.</div>
+      </div>
+      <div class="date-chip" id="date-chip"></div>
+    </div>
+
+    <div class="content">
+
+      <!-- ===== DASHBOARD ===== -->
+      <div class="section visible" id="sec-dashboard">
+        <!-- WEEK STRIP -->
+        <div class="week-strip" id="week-strip"></div>
+
+        <!-- STAT CARDS -->
+        <div class="grid-3" style="margin-bottom:16px">
+          <div class="card glow-card">
+            <div class="card-label">Habit score</div>
+            <div class="stat-val accent" style="margin-top:10px" id="habit-score">0%</div>
+            <div class="stat-label">of today's habits done</div>
+            <div class="stat-change" id="habit-change">↑ 2 done today</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Tasks today</div>
+            <div class="stat-val teal" style="margin-top:10px" id="task-score">0/0</div>
+            <div class="stat-label">completed</div>
+            <div class="stat-change" id="task-change">↑ Good pace</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Active goals</div>
+            <div class="stat-val gold" style="margin-top:10px">3</div>
+            <div class="stat-label">in progress</div>
+            <div class="stat-change">↑ 1 near completion</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- TODAY'S HABITS PREVIEW -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Today's habits</div>
+              <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="switchTab('habits')">View all</button>
+            </div>
+            <div id="dash-habits"></div>
+          </div>
+
+          <!-- AI INSIGHTS -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">AI Insights</div>
+              <span class="badge badge-purple">Live</span>
+            </div>
+            <div id="insights-feed">
+              <div class="insight-item">
+                <div class="insight-icon" style="background:rgba(124,92,252,0.12)">🎯</div>
+                <div>
+                  <div class="insight-title">Goal momentum detected</div>
+                  <div class="insight-text">Your trading prep goal is 60% done — you're on track to finish 3 days early.</div>
+                  <div class="insight-time">Just now</div>
+                </div>
+              </div>
+              <div class="insight-item">
+                <div class="insight-icon" style="background:rgba(20,184,166,0.1)">💡</div>
+                <div>
+                  <div class="insight-title">Suggested: 1hr study block</div>
+                  <div class="insight-text">You haven't logged a study session today. Best time based on your pattern: 7:30 PM.</div>
+                  <div class="insight-time">2 mins ago</div>
+                </div>
+              </div>
+              <div class="insight-item">
+                <div class="insight-icon" style="background:rgba(245,158,11,0.1)">🔥</div>
+                <div>
+                  <div class="insight-title">Habit streak at risk</div>
+                  <div class="insight-text">You've been consistent 5 days — don't break the chain today!</div>
+                  <div class="insight-time">5 mins ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AI COACH ===== -->
+      <div class="section" id="sec-ai">
+        <div class="grid-2" style="align-items:start">
+          <div class="ai-panel">
+            <div class="ai-header">
+              <div class="ai-dot"></div>
+              <div class="ai-title">AI Life Coach</div>
+              <div class="ai-sub">Powered by Claude</div>
+            </div>
+            <div class="messages" id="messages"></div>
+            <div class="quick-prompts">
+              <button class="quick-btn" onclick="sendQuick('How should I plan my day today?')">Plan my day</button>
+              <button class="quick-btn" onclick="sendQuick('Review my habits and give me feedback')">Habit review</button>
+              <button class="quick-btn" onclick="sendQuick('Help me stay motivated')">Motivate me</button>
+              <button class="quick-btn" onclick="sendQuick('What should I focus on to earn money this month?')">Earn tips</button>
+            </div>
+            <div class="ai-input-row">
+              <input class="add-input" id="chat-input" placeholder="Ask your AI coach anything..." onkeydown="if(event.key==='Enter')sendMsg()"/>
+              <button class="btn btn-primary" onclick="sendMsg()">Send</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-head"><div class="card-title">Your context</div></div>
+              <div style="font-size:13px;color:var(--text2);line-height:1.8">
+                <div>📚 <b style="color:var(--text)">PCM student</b> · Class 12</div>
+                <div>📱 <b style="color:var(--text)">Instagram</b> creator (~25 days in)</div>
+                <div>📈 <b style="color:var(--text)">Trading</b> · Starting June 2026</div>
+                <div>🛕 <b style="color:var(--text)">PoojaKit app</b> · In dev</div>
+                <div>🎯 <b style="color:var(--text)">Goal:</b> ₹1–2Cr by 2030</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div class="card-title">Weekly focus</div></div>
+              <div class="goal-item">
+                <div class="goal-top"><span class="goal-name">IELTS prep</span><span class="goal-pct">35%</span></div>
+                <div class="progress-bar"><div class="progress-fill" style="width:35%"></div></div>
+              </div>
+              <div class="goal-item">
+                <div class="goal-top"><span class="goal-name">Instagram growth</span><span class="goal-pct">60%</span></div>
+                <div class="progress-bar"><div class="progress-fill" style="width:60%"></div></div>
+              </div>
+              <div class="goal-item">
+                <div class="goal-top"><span class="goal-name">Trading basics</span><span class="goal-pct">20%</span></div>
+                <div class="progress-bar"><div class="progress-fill" style="width:20%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== HABITS ===== -->
+      <div class="section" id="sec-habits">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Daily habits</div>
+              <span class="badge badge-gold" id="streak-badge">🔥 5 day streak</span>
+            </div>
+            <div id="habits-list"></div>
+            <div class="add-row">
+              <input class="add-input" id="habit-input" placeholder="Add a new habit..." onkeydown="if(event.key==='Enter')addHabit()"/>
+              <button class="btn btn-primary" onclick="addHabit()">Add</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">This week's completion</div></div>
+            <div id="habit-week-view"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== GOALS ===== -->
+      <div class="section" id="sec-goals">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Active goals</div>
+              <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="showAddGoal()">+ Add goal</button>
+            </div>
+            <div id="goals-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">Vision board</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+              <div style="background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.15);border-radius:10px;padding:14px;text-align:center">
+                <div style="font-size:24px;margin-bottom:6px">💰</div>
+                <div style="font-size:12px;font-weight:600;color:var(--accent2)">₹1–2 Crore</div>
+                <div style="font-size:11px;color:var(--text3)">by 2030</div>
+              </div>
+              <div style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.15);border-radius:10px;padding:14px;text-align:center">
+                <div style="font-size:24px;margin-bottom:6px">✈️</div>
+                <div style="font-size:12px;font-weight:600;color:var(--teal)">Travel world</div>
+                <div style="font-size:11px;color:var(--text3)">10+ countries</div>
+              </div>
+              <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.12);border-radius:10px;padding:14px;text-align:center">
+                <div style="font-size:24px;margin-bottom:6px">🎓</div>
+                <div style="font-size:12px;font-weight:600;color:var(--gold)">Scholarship</div>
+                <div style="font-size:11px;color:var(--text3)">fully funded</div>
+              </div>
+              <div style="background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.12);border-radius:10px;padding:14px;text-align:center">
+                <div style="font-size:24px;margin-bottom:6px">📱</div>
+                <div style="font-size:12px;font-weight:600;color:var(--coral)">10K followers</div>
+                <div style="font-size:11px;color:var(--text3)">Instagram</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TASKS ===== -->
+      <div class="section" id="sec-tasks">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Today's tasks</div>
+              <select id="task-filter" onchange="renderTasks()">
+                <option value="all">All</option>
+                <option value="work">Work</option>
+                <option value="health">Health</option>
+                <option value="learn">Learn</option>
+                <option value="money">Money</option>
+              </select>
+            </div>
+            <div id="tasks-list"></div>
+            <div class="add-row">
+              <input class="add-input" id="task-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTask()"/>
+              <select id="task-tag-select" style="padding:10px 10px">
+                <option value="work">Work</option>
+                <option value="health">Health</option>
+                <option value="learn">Learn</option>
+                <option value="money">Money</option>
+              </select>
+              <button class="btn btn-primary" onclick="addTask()">Add</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">Task breakdown</div></div>
+            <div id="task-breakdown" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== FINANCE ===== -->
+      <div class="section" id="sec-finance">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Monthly spend</div>
+              <span class="badge badge-teal">May 2026</span>
+            </div>
+            <div class="spend-bar" id="spend-bar"></div>
+            <div class="legend-row" id="spend-legend"></div>
+            <div class="divider"></div>
+            <div class="card-head"><div class="card-title">Log expense</div></div>
+            <div class="add-row">
+              <input class="add-input" id="exp-name" placeholder="What did you spend on?" style="flex:2"/>
+              <input class="add-input" id="exp-amt" placeholder="₹" type="number" style="flex:1"/>
+              <button class="btn btn-primary" onclick="addExpense()">Log</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">Savings tracker</div></div>
+            <div class="stat-val gold" style="margin:10px 0 4px" id="savings-val">₹0</div>
+            <div class="stat-label" style="margin-bottom:16px">saved this month (goal: ₹5,000)</div>
+            <div class="progress-bar"><div class="progress-fill" id="savings-bar" style="width:0%"></div></div>
+            <div class="divider"></div>
+            <div style="font-size:13px;color:var(--text2)">
+              <div style="margin-bottom:8px">💡 <b style="color:var(--text)">AI Tip:</b> If you save ₹500/week, you'll hit ₹5K by month end.</div>
+              <div>📊 Biggest spend category: <b style="color:var(--coral)">Food</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ============ STATE ============
+const state = {
+  habits: [
+    { id:1, name:'Study 1hr', done:[1,1,1,1,1,0,0], today:false },
+    { id:2, name:'Trade journal', done:[1,1,0,1,1,0,0], today:false },
+    { id:3, name:'Post on Instagram', done:[1,0,1,1,0,0,0], today:false },
+    { id:4, name:'Exercise 30min', done:[1,1,1,0,1,0,0], today:false },
+    { id:5, name:'Read 20 pages', done:[0,1,1,1,0,0,0], today:false },
+  ],
+  goals: [
+    { id:1, name:'Learn Trading basics', progress:60, deadline:'Jun 30, 2026', category:'money' },
+    { id:2, name:'Get 500 Instagram followers', progress:34, deadline:'Jul 15, 2026', category:'work' },
+    { id:3, name:'IELTS 7.0 band', progress:20, deadline:'Dec 2026', category:'learn' },
+  ],
+  tasks: [
+    { id:1, text:'Revise Chemical Kinetics chapter', tag:'learn', done:false },
+    { id:2, text:'Record 1 Instagram reel', tag:'work', done:false },
+    { id:3, text:'Watch 1 trading video', tag:'money', done:false },
+    { id:4, text:'Morning workout', tag:'health', done:true },
+    { id:5, text:'Reply to DMs', tag:'work', done:false },
+  ],
+  expenses: [
+    { name:'Food', amount:2400, color:'#f87171' },
+    { name:'Transport', amount:600, color:'#a78bfa' },
+    { name:'Study material', amount:800, color:'#14b8a6' },
+    { name:'Entertainment', amount:400, color:'#f59e0b' },
+  ],
+  messages: [],
+  currentTab: 'dashboard',
+};
+
+// ============ DATE ============
+function setupDate() {
+  const now = new Date();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('date-chip').textContent =
+    `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+
+  // Week strip
+  const strip = document.getElementById('week-strip');
+  for(let i=-3; i<=3; i++) {
+    const d = new Date(now); d.setDate(now.getDate()+i);
+    const chip = document.createElement('div');
+    chip.className = 'day-chip' + (i===0?' today':'');
+    chip.innerHTML = `<div class="d-name">${days[d.getDay()]}</div><div class="d-num">${d.getDate()}</div><div class="d-dot${i===0||i===-1||i===-2?'':' empty'}"></div>`;
+    strip.appendChild(chip);
+  }
+}
+
+// ============ TAB SWITCHING ============
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.getElementById('sec-'+tab).classList.add('visible');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const titles = {
+    dashboard: ["Good morning, Gyanvi 👋", "Here's your life snapshot for today."],
+    ai: ["AI Coach", "Your personal intelligent life coach."],
+    habits: ["Habits", "Build consistency, one day at a time."],
+    goals: ["Goals", "Track what matters most."],
+    tasks: ["Tasks", "Stay on top of your to-do list."],
+    finance: ["Finance", "Track every rupee."],
+  };
+  document.getElementById('page-title').textContent = titles[tab][0];
+  document.getElementById('page-sub').textContent = titles[tab][1];
+
+  event.currentTarget && event.currentTarget.classList.add('active');
+  // Re-render sections
+  if(tab === 'dashboard') renderDashboard();
+  if(tab === 'habits') renderHabits();
+  if(tab === 'goals') renderGoals();
+  if(tab === 'tasks') renderTasks();
+  if(tab === 'finance') renderFinance();
+  if(tab === 'ai') initChat();
+}
+
+// ============ HABITS ============
+function renderHabits() {
+  const list = document.getElementById('habits-list');
+  const days = ['M','T','W','T','F','S','S'];
+  list.innerHTML = '';
+  state.habits.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'habit-row';
+    const streak = h.done.filter(Boolean).length;
+    row.innerHTML = `
+      <div>
+        <div class="habit-name">${h.name}</div>
+        <div class="habit-streak">🔥 ${streak} day streak</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div class="dots">${h.done.map((d,i)=>`<div class="dot${d?' done':''}${i===6?' today':''}" onclick="toggleHabit(${h.id},${i})"></div>`).join('')}</div>
+        <div style="font-size:10px;color:var(--text3)">${days.join(' ')}</div>
+      </div>`;
+    list.appendChild(row);
+  });
+  renderDashHabits();
+  updateStats();
+}
+
+function renderDashHabits() {
+  const el = document.getElementById('dash-habits');
+  if(!el) return;
+  el.innerHTML = '';
+  state.habits.slice(0,4).forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'habit-row';
+    row.innerHTML = `
+      <div class="habit-name">${h.name}</div>
+      <div class="dot${h.done[6]?' done':' today'}" onclick="toggleHabit(${h.id},6); renderDashHabits(); updateStats()"></div>`;
+    el.appendChild(row);
+  });
+}
+
+function toggleHabit(id, idx) {
+  const h = state.habits.find(x=>x.id===id);
+  if(h) h.done[idx] = h.done[idx] ? 0 : 1;
+  renderHabits();
+  updateStats();
+}
+
+function addHabit() {
+  const input = document.getElementById('habit-input');
+  const name = input.value.trim();
+  if(!name) return;
+  state.habits.push({ id: Date.now(), name, done:[0,0,0,0,0,0,0] });
+  input.value = '';
+  renderHabits();
+}
+
+function updateStats() {
+  const todayDone = state.habits.filter(h=>h.done[6]).length;
+  const pct = Math.round((todayDone/state.habits.length)*100);
+  const el = document.getElementById('habit-score');
+  if(el) el.textContent = pct+'%';
+  const ch = document.getElementById('habit-change');
+  if(ch) ch.textContent = `↑ ${todayDone} done today`;
+
+  const tasksDone = state.tasks.filter(t=>t.done).length;
+  const ts = document.getElementById('task-score');
+  if(ts) ts.textContent = `${tasksDone}/${state.tasks.length}`;
+}
+
+// ============ GOALS ============
+function renderGoals() {
+  const list = document.getElementById('goals-list');
+  list.innerHTML = '';
+  state.goals.forEach(g => {
+    const div = document.createElement('div');
+    div.className = 'goal-item';
+    div.innerHTML = `
+      <div class="goal-top">
+        <span class="goal-name">${g.name}</span>
+        <span class="goal-pct">${g.progress}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${g.progress}%"></div></div>
+      <div class="goal-dead">Due: ${g.deadline}</div>`;
+    list.appendChild(div);
+  });
+}
+
+// ============ TASKS ============
+function renderTasks() {
+  const filter = document.getElementById('task-filter')?.value || 'all';
+  const list = document.getElementById('tasks-list');
+  const filtered = filter === 'all' ? state.tasks : state.tasks.filter(t=>t.tag===filter);
+  list.innerHTML = '';
+  filtered.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'task-item' + (t.done?' done':'');
+    div.innerHTML = `
+      <div class="task-check" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
+      <span class="task-text">${t.text} <span class="task-tag tag-${t.tag}">${t.tag}</span></span>`;
+    list.appendChild(div);
+  });
+  updateStats();
+  renderTaskBreakdown();
+}
+
+function toggleTask(id) {
+  const t = state.tasks.find(x=>x.id===id);
+  if(t) t.done = !t.done;
+  renderTasks();
+}
+
+function addTask() {
+  const input = document.getElementById('task-input');
+  const tag = document.getElementById('task-tag-select').value;
+  const text = input.value.trim();
+  if(!text) return;
+  state.tasks.push({ id:Date.now(), text, tag, done:false });
+  input.value = '';
+  renderTasks();
+}
+
+function renderTaskBreakdown() {
+  const el = document.getElementById('task-breakdown');
+  if(!el) return;
+  const cats = ['work','health','learn','money'];
+  const colors = { work:'#a78bfa', health:'#14b8a6', learn:'#f59e0b', money:'#f87171' };
+  el.innerHTML = cats.map(c => {
+    const total = state.tasks.filter(t=>t.tag===c).length;
+    const done = state.tasks.filter(t=>t.tag===c&&t.done).length;
+    const pct = total ? Math.round((done/total)*100) : 0;
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span class="task-tag tag-${c}">${c}</span>
+        <span style="font-size:12px;color:var(--text2)">${done}/${total}</span>
+      </div>
+      <div class="progress-bar"><div style="height:100%;width:${pct}%;background:${colors[c]};border-radius:2px;transition:width 0.4s"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ============ FINANCE ============
+function renderFinance() {
+  const total = state.expenses.reduce((a,e)=>a+e.amount,0);
+  const bar = document.getElementById('spend-bar');
+  const legend = document.getElementById('spend-legend');
+  bar.innerHTML = '';
+  legend.innerHTML = '';
+  state.expenses.forEach(e => {
+    const pct = (e.amount/total*100).toFixed(1);
+    bar.innerHTML += `<div class="spend-seg" style="flex:${e.amount};background:${e.color}"></div>`;
+    legend.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${e.color}"></div>${e.name} ₹${e.amount} (${pct}%)</div>`;
+  });
+  // Savings
+  const savings = Math.max(0, 5000 - total);
+  document.getElementById('savings-val').textContent = '₹'+savings.toLocaleString('en-IN');
+  document.getElementById('savings-bar').style.width = Math.min(100,(savings/5000)*100)+'%';
+}
+
+function addExpense() {
+  const name = document.getElementById('exp-name').value.trim();
+  const amt = parseInt(document.getElementById('exp-amt').value);
+  if(!name || !amt) return;
+  const colors = ['#a78bfa','#14b8a6','#f59e0b','#f87171','#60a5fa','#34d399'];
+  state.expenses.push({ name, amount: amt, color: colors[state.expenses.length % colors.length] });
+  document.getElementById('exp-name').value = '';
+  document.getElementById('exp-amt').value = '';
+  renderFinance();
+}
+
+// ============ DASHBOARD ============
+function renderDashboard() {
+  renderDashHabits();
+  updateStats();
+}
+
+// ============ AI CHAT ============
+let chatInited = false;
+function initChat() {
+  if(chatInited) return;
+  chatInited = true;
+  addAiMessage("Hey Gyanvi! 👋 I'm your AI life coach. I know you're a Class 12 PCM student, building an Instagram presence, learning trading, and working on the PoojaKit app — all while aiming for ₹1-2Cr by 2030. That's ambitious and I love it. What do you want to work on today?");
+}
+
+function addAiMessage(text) {
+  state.messages.push({ role:'ai', text });
+  renderMessages();
+}
+
+function addUserMessage(text) {
+  state.messages.push({ role:'user', text });
+  renderMessages();
+}
+
+function renderMessages() {
+  const el = document.getElementById('messages');
+  el.innerHTML = '';
+  state.messages.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'msg '+m.role;
+    div.innerHTML = `<div class="msg-name">${m.role==='ai'?'LifeOS AI':'You'}</div>${escHtml(m.text)}`;
+    el.appendChild(div);
+  });
+  el.scrollTop = el.scrollHeight;
+}
+
+function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function sendMsg() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  addUserMessage(text);
+  showTyping();
+  await callClaude(text);
+}
+
+function sendQuick(text) {
+  document.getElementById('chat-input').value = text;
+  sendMsg();
+}
+
+function showTyping() {
+  const el = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typing-indicator';
+  div.innerHTML = '<div class="msg-name">LifeOS AI</div><div class="typing"><span></span><span></span><span></span></div>';
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if(t) t.remove();
+}
+
+async function callClaude(userMsg) {
+  const systemPrompt = `You are LifeOS, an AI life coach built inside an AI Life Manager app. You're talking to Gyanvi, a 17-year-old (turning 18 in June 2026) from India with the following context:
+- Class 12 PCM student finishing board exams, leaning toward BBA Honours
+- Building Instagram presence (~25 days in, wants growth)  
+- Learning trading starting June 2026
+- Building PoojaKit (a delivery app for religious/festival items)
+- Building a dropshipping website in Python/SQL
+- Goal: earn ₹1-2 crore between 2026-2030, become a billionaire by 21
+- Middle-class background, very ambitious
+- Also targeting fully funded scholarships abroad
+
+Their current habits being tracked: Study, Instagram posting, trading journal, exercise, reading.
+
+Be concise, sharp, and genuinely helpful. Use a friendly but direct tone — like a smart older friend who knows about business, productivity, and life strategy. Keep responses under 120 words. Use emojis sparingly. Give specific, actionable advice. Don't be generic.`;
+
+  const conversationHistory = state.messages.slice(-6).map(m => ({
+    role: m.role === 'ai' ? 'assistant' : 'user',
+    content: m.text
+  }));
+
+  // Remove the last user message from history since we'll pass it separately
+  // and build full messages array
+  const msgs = [];
+  for(let i=0; i<conversationHistory.length-1; i++) {
+    msgs.push(conversationHistory[i]);
+  }
+  msgs.push({ role:'user', content: userMsg });
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: msgs,
+      })
+    });
+    const data = await res.json();
+    removeTyping();
+    const reply = data.content?.[0]?.text || "Sorry, couldn't reach the AI. Try again!";
+    addAiMessage(reply);
+  } catch(e) {
+    removeTyping();
+    addAiMessage("Connection error. Make sure you're on Claude.ai — the AI is powered by the Anthropic API.");
+  }
+}
+
+// ============ INIT ============
+setupDate();
+renderDashboard();
+renderHabits();
+renderGoals();
+renderTasks();
+renderFinance();
+
+// Nav click handler
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
